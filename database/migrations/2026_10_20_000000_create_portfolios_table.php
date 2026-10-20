@@ -8,9 +8,21 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Table already exists (from the first project): only add the owner column
+        if (Schema::hasTable('portfolios')) {
+            if (!Schema::hasColumn('portfolios', 'user_id')) {
+                Schema::table('portfolios', function (Blueprint $table) {
+                    $table->foreignId('user_id')->nullable()->after('id')
+                          ->constrained()->cascadeOnDelete();
+                });
+            }
+            return;
+        }
+
+        // Fresh database: create the full table
         Schema::create('portfolios', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('user_id')->nullable()->constrained()->cascadeOnDelete();
             $table->string('full_name');
             $table->longText('profile_picture')->nullable();
             $table->string('email');
@@ -29,6 +41,10 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('portfolios');
+        if (Schema::hasColumn('portfolios', 'user_id')) {
+            Schema::table('portfolios', function (Blueprint $table) {
+                $table->dropConstrainedForeignId('user_id');
+            });
+        }
     }
 };
